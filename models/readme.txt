@@ -14,6 +14,7 @@ models目录结构：
 -- shopify__products.sql
 -- shopify__transactions.sql
 
+
 一 目录intermediate
 文件intermediate/shopify__customers__order_aggregates.sql的作用：
 1 将原始数据表shopify_order与预处理表shopify__transactions进行关联，关联条件（order_id, source_relation），
@@ -45,9 +46,11 @@ models目录结构：
   order_line_refunds.total_tax（退款总税额）
 一句话总结：根据原始数据表shopify_order_line、原始shopify_refund和原始shopify_order_line_refund进行分组和关联，求出各种退款信息。
   
+  
 二 目录utils
 文件utils/shopify__calendar.sql的作用：
 1 生成日期
+
 
 三 目录models
 文件shopify__customer_cohorts.sql的作用：
@@ -113,7 +116,6 @@ shopify__orders.sql的作用：
   4 根据partition by customer_id, source_relation order by created_timestamp，针对用户在店铺中的记录，给出购买记录是第一次new，还是不是第一次repeat
 一句话总结：根据基于预处理表shopify__orders__order_refunds、原始数据表shopify_order_adjustment原始数据表shopify_order和预处理表shopify__orders__order_line_aggregates，进行分组和关联，统计出refund_subtotal、refund_total_tax、order_adjustment_amount、order_adjustment_tax_amount，解析字段total_shipping_price_set，和计算总的调整金额和订单项总数。
     
-
 shopify__products.sql的作用：
   1 将预处理表shopify__order_lines和预处理表shopify__orders进行关联，关联条件（order_id, source_relation），
   2 选择需要的信息：
