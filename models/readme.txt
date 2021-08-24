@@ -24,6 +24,7 @@ models目录结构：
   sum(case when transactions.kind in ('sale','capture') then transactions.currency_exchange_calculated_amount) as lifetime_total_spent（客户在店铺的总订单金额）,
   sum(case when transactions.kind in ('refund') then transactions.currency_exchange_calculated_amount) as lifetime_total_refunded（客户在店铺的总退款金额）,
   count(distinct orders.order_id) as lifetime_count_orders（客户在店铺的总订单次数）
+一句话总结：将原始数据表shopify_order与预处理表shopify__transactions进行关联，求出客户第一次订单时间、客户最后一次订单时间、客户在店铺的每次平均订单金额、客户在店铺的总订单金额、客户在店铺的总退款金额和客户在店铺的总订单次数。
   
 文件intermediate/shopify__orders__order_line_aggregates.sql的作用：
 1 对原始数据表shopify_order_line进行order_id和source_relation(店铺ID)分组统计：
@@ -42,6 +43,7 @@ models目录结构：
   order_line_refunds.quantity,（退款的数量）
   order_line_refunds.subtotal,（退款的金额）
   order_line_refunds.total_tax（退款总税额）
+一句话总结：根据原始数据表shopify_order_line、原始shopify_refund和原始shopify_order_line_refund进行分组和关联，求出各种退款信息。
   
 二 目录utils
 文件utils/shopify__calendar.sql的作用：
@@ -65,7 +67,7 @@ models目录结构：
     sum(order_count_in_month),（一个客户按月累积的订单数）
     sum(total_price_in_month),（一个客户按月累积的订单调整数）
     sum(line_item_count_in_month)（一个客户按月累计的订单具体项总数）
-总结：对客户，以月为单位，统计其订单总数、订单调整总数和订单具体项总数。（可以用BI工具进行展示说明）
+一句话总结：对客户，以月为单位，分别统计和累积统计订单总数、订单调整总数和订单具体项总数。（可以用BI工具进行展示说明）
 
 shopify__customers.sql的作用：
   1 将原始表shopify_customer和预处理表shopify__customers__order_aggregates进行关联，关联条件（customer_id, source_relation）
@@ -78,17 +80,28 @@ shopify__customers.sql的作用：
     shopify__customers__order_aggregates.lifetime_total_refunded as lifetime_total_refunded,（客户在店铺的总退款金额）
     shopify__customers__order_aggregates.lifetime_total_spent - orders.lifetime_total_refunded as lifetime_total_amount,（客户在店铺的总订单金额 - 总退款金额）
     shopify__customers__order_aggregates.lifetime_count_orders as lifetime_count_orders（客户在店铺的总订单次数）
+一句话总结：根据原始表shopify_customer和预处理表shopify__customers__order_aggregates进行关联，选择出客户第一次订单时间、客户最后一次订单时间、客户在店铺的每次平均订单金额、客户在店铺的总订单金额、客户在店铺的总退款金额、（客户在店铺的总订单金额 - 总退款金额）和客户在店铺的总订单次数。
 
 shopify__order_lines.sql的作用：
-  
+  1 对预处理表shopify__orders__order_refunds，根据(order_line_id, source_relation)进行分组，给出：
+    sum(quantity) as quantity,
+    sum(subtotal) as subtotal,
+  2 将原始数据表shopify_order_line，上一步聚合的表shopify_product_variant，原始数据表shopify_product_variant进行关联，关联条件是id和source_relation，选择所需要的信息：
+    shopify_order_line.*,
+    quantity,
+    subtotal,
+    (shopify_order_line.quantity - quantity) as quantity_net_refunds,（）
+    (shopify_order_line.pre_tax_price - subtotal) as subtotal_net_refunds,（）
+    shopify_product_variant.*
+一句话总结：对预处理表shopify__orders__order_refunds和原始数据表shopify_order_line进行分组和关联，计算和选择quantity、subtotal、quantity_net_refunds和subtotal_net_refunds等信息。
 
 shopify__orders.sql的作用：
-  1 基于预处理表shopify__orders__order_refunds进行关联，根据（order_id, source_relation）统计出:
-    sum(subtotal) as refund_subtotal,
-    sum(total_tax) as refund_total_tax
-  2 基于原始数据表shopify_order_adjustment进行关联，根据（order_id, source_relation）统计出:
-    sum(amount) as order_adjustment_amount,
-    sum(tax_amount) as order_adjustment_tax_amount
+  1 基于预处理表shopify__orders__order_refunds进行分组，根据（order_id, source_relation）统计出:
+    sum(subtotal) as refund_subtotal,（）
+    sum(total_tax) as refund_total_tax（）
+  2 基于原始数据表shopify_order_adjustment进行分组，根据（order_id, source_relation）统计出:
+    sum(amount) as order_adjustment_amount,（）
+    sum(tax_amount) as order_adjustment_tax_amount（）
   3 基于原始数据表shopify_order、预处理表shopify__orders__order_line_aggregates，以及上面两个聚合表进行关联，根据id和source_relation，选择需要的信息
     json_parse("total_shipping_price_set",["shop_money","amount"]),
     order_adjustment_amount,
@@ -98,6 +111,7 @@ shopify__orders.sql的作用：
     (shopify_order.total_price + order_adjustment_amount + order_adjustment_tax_amount - refund_subtotal - refund_total_tax) as order_adjusted_total,（总的调整金额）
     order_lines.line_item_count（订单项的总数）
   4 根据partition by customer_id, source_relation order by created_timestamp，针对用户在店铺中的记录，给出购买记录是第一次new，还是不是第一次repeat
+一句话总结：根据基于预处理表shopify__orders__order_refunds、原始数据表shopify_order_adjustment原始数据表shopify_order和预处理表shopify__orders__order_line_aggregates，进行分组和关联，统计出refund_subtotal、refund_total_tax、order_adjustment_amount、order_adjustment_tax_amount，解析字段total_shipping_price_set，和计算总的调整金额和订单项总数。
     
 
 shopify__products.sql的作用：
@@ -120,10 +134,11 @@ shopify__products.sql的作用：
     subtotal_sold_net_refunds,
     first_order_timestamp,
     most_recent_order_timestamp
+一句话总结：将预处理表shopify__order_lines、预处理表shopify__orders进行关联和原始数据表shopify_product进行关联，统计出订单相关信息和选择订单变体相关信息。
 
 shopify__transactions.sql的作用：
   1 将原表shopify_transaction中的字段receipt进行拆解，统计：
     统计receipt中字段的exchange_rate,
-    统计receipt中字段的exchange_rate * amount,
-
+    统计receipt中字段的exchange_rate * amount as currency_exchange_calculated_amount,
+一句话总结：将原表shopify_transaction中的字段进行拆分和计算。
   
