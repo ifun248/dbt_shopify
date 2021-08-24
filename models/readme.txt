@@ -93,18 +93,18 @@ shopify__order_lines.sql的作用：
     shopify_order_line.*,
     quantity,
     subtotal,
-    (shopify_order_line.quantity - quantity) as quantity_net_refunds,（）
-    (shopify_order_line.pre_tax_price - subtotal) as subtotal_net_refunds,（）
+    (shopify_order_line.quantity - quantity) as quantity_net_refunds,（订单数量，排除退款）
+    (shopify_order_line.pre_tax_price - subtotal) as subtotal_net_refunds,（订单金额，排除退款）
     shopify_product_variant.*
 一句话总结：对预处理表shopify__orders__order_refunds和原始数据表shopify_order_line进行分组和关联，计算和选择quantity、subtotal、quantity_net_refunds和subtotal_net_refunds等信息。
 
 shopify__orders.sql的作用：
   1 基于预处理表shopify__orders__order_refunds进行分组，根据（order_id, source_relation）统计出:
-    sum(subtotal) as refund_subtotal,（）
-    sum(total_tax) as refund_total_tax（）
+    sum(subtotal) as refund_subtotal,（退款总数量）
+    sum(total_tax) as refund_total_tax（退款总税额）
   2 基于原始数据表shopify_order_adjustment进行分组，根据（order_id, source_relation）统计出:
-    sum(amount) as order_adjustment_amount,（）
-    sum(tax_amount) as order_adjustment_tax_amount（）
+    sum(amount) as order_adjustment_amount,（订单调整总数据量）
+    sum(tax_amount) as order_adjustment_tax_amount（订单调整总税额）
   3 基于原始数据表shopify_order、预处理表shopify__orders__order_line_aggregates，以及上面两个聚合表进行关联，根据id和source_relation，选择需要的信息
     json_parse("total_shipping_price_set",["shop_money","amount"]),
     order_adjustment_amount,
@@ -121,10 +121,10 @@ shopify__products.sql的作用：
   2 选择需要的信息：
     shopify__order_lines.product_id,
     shopify__order_lines.source_relation,
-    sum(shopify__order_lines.quantity) as quantity_sold,（订单项的数量）
-    sum(shopify__order_lines.pre_tax_price) as subtotal_sold,（订单项的）
-    sum(shopify__order_lines.quantity_net_refunds) as quantity_sold_net_refunds,（）
-    sum(shopify__order_lines.subtotal_net_refunds) as subtotal_sold_net_refunds,（）
+    sum(shopify__order_lines.quantity) as quantity_sold,（一个order_id的订单项的总数量）
+    sum(shopify__order_lines.pre_tax_price) as subtotal_sold,（一个订单order_id的订单项的总税额/总购买额）
+    sum(shopify__order_lines.quantity_net_refunds) as quantity_sold_net_refunds,（订单数量，排除退款）
+    sum(shopify__order_lines.subtotal_net_refunds) as subtotal_sold_net_refunds,（订单金额，排除退款）
     min(shopify__orders.created_timestamp) as first_order_timestamp,（最早订单时间）
     max(shopify__orders.created_timestamp) as most_recent_order_timestamp（最晚订单时间）
   3 将上面结果与原始数据表shopify_product进行关联，关联条件为（product_id, source_relation），
