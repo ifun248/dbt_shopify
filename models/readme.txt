@@ -19,8 +19,8 @@ models目录结构：
 文件intermediate/shopify__customers__order_aggregates.sql的作用：
 1 将原始数据表shopify_order与预处理表shopify__transactions进行关联，关联条件（order_id, source_relation），
 2 根据customer_id和source_relation(店铺ID)进行分组统计出：
-  min(orders.created_timestamp) as first_order_timestamp,（客户第一次订单时间）
-  max(orders.created_timestamp) as most_recent_order_timestamp,（客户最后一次订单时间）
+  min(orders.created_timestamp) as first_order_timestamp,（客户在店铺第一次订单时间）
+  max(orders.created_timestamp) as most_recent_order_timestamp,（客户在店铺最后一次订单时间）
   avg(case when transactions.kind in ('sale','capture') then transactions.currency_exchange_calculated_amount) as average_order_value（客户在店铺的每次平均订单金额）,
   sum(case when transactions.kind in ('sale','capture') then transactions.currency_exchange_calculated_amount) as lifetime_total_spent（客户在店铺的总订单金额）,
   sum(case when transactions.kind in ('refund') then transactions.currency_exchange_calculated_amount) as lifetime_total_refunded（客户在店铺的总退款金额）,
