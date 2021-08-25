@@ -28,7 +28,7 @@ models目录结构：
 一句话总结：将原始数据表shopify_order与预处理表shopify__transactions进行关联，求出客户第一次订单时间、客户最后一次订单时间、客户在店铺的每次平均订单金额、客户在店铺的总订单金额、客户在店铺的总退款金额和客户在店铺的总订单次数。
   
 文件intermediate/shopify__orders__order_line_aggregates.sql的作用：
-1 对原始数据表shopify_order_line进行order_id和source_relation(店铺ID)分组统计：
+1 对原始数据表shopify_order_line根据order_id和source_relation(店铺ID)分组统计：
   count(*) as line_item_count（count of a line item of an order）
   
 文件intermediate/shopify__orders__order_refunds.sql的作用：
